@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Subtitle Character Correction</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <style>
+        .hidden {
+        	display: none !important;
+        }
+    </style>
+</head>
+<body>
+	<div class="container">
+		<div class="row">
+			<div class="col-md-12">
+				<h1>Subtitle Character Correction</h1>
+				<form>
+					<div class="form-group">
+						<label for="subtitle-files">Select Subtitle Files</label>
+						<input type="file" id="subtitle-files" name="subtitle-files[]" onchange="api.clean();" multiple>
+						<p class="help-block">Select one or more subtitle files to correct the characters.</p>
+					</div>
+					<button type="button" id="btn-correct" class="btn btn-primary" onclick="api.doit();">Correct Characters</button>
+					<a href="#" id="download-link" download class="hidden">Download Corrected Files</a>
+				</form>
+				<div class="progress hidden">
+				</div>
+			</div>
+		</div>
+	</div>
+	<script src="main.js"></script>
+</body>
+</html>
