@@ -11,6 +11,13 @@ const api = {
     {
         return document.getElementById(id).files;
     },
+    newAlert(info)
+    {
+        const div = document.createElement("div");
+        div.setAttribute("class", "alert alert-danger");
+        div.innerHTML = info;
+        document.body.appendChild(div);
+    },
     processFiles()
     {
         var reader = new FileReader();
@@ -22,6 +29,9 @@ const api = {
 				const result = event.target.result;
 				api.files.push({content: this.fix(result), name: fil.name.replace(".srt", "_correct.srt")});
 			});
+            reader.addEventListener('error', (error) => {
+                    this.newAlert(error);
+            })
             reader.readAsText(fil, 'iso-8859-2');
         }
     },
