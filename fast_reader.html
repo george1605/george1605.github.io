@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF.js with Navigation Arrows</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        .nav {
+            width: 100%;
+            height: 50px;
+            padding: 10px;
+            background: #282c34;
+            color: white;
+            position: fixed;
+            top: 0;
+            left: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .nav h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        #input-set {
+            padding: 20px;
+            margin-top: 60px;
+            text-align: center;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #input-set label {
+            display: block;
+            font-weight: bold;
+            margin: 10px 0 5px;
+        }
+
+        #input-set input[type="file"],
+        #input-set input[type="url"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        #pdf-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        #pdf-controls button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 0 10px;
+        }
+
+        #pdf-controls button:hover {
+            background-color: #45a049;
+        }
+
+        #page-info {
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        #pdf-canvas {
+            display: block;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #words {
+            background-color: #282c34;
+            color: white;
+            text-align: center;
+            font-size: 24px;
+            padding: 20px;
+            margin: 20px auto;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #speed {
+            display: block;
+            width: 80%;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+
+        #show {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        #show:hover {
+            background-color: #0069d9;
+        }
+
+        .num {
+            width: 5%;
+            border-radius: 10px;
+            border: 1px solid gray;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="nav">
+        <h2>PDF Speed Reader</h2>
+    </div>
+    <fieldset id="input-set">
+        <label for="file-input">Select a PDF file</label><br>
+        <input type="file" id="file-input" accept="application/pdf" /><br>
+        <label for="url">Or input an URL</label>
+        <input type="url" id="url" /><br>
+    </fieldset>
+    <div id="pdf-controls">
+        <button id="prev-page">◄</button>
+        <span id="page-info">Page: </span>
+        <input type="text" id="page_num" class="num"/>
+        <button id="next-page">►</button>        
+    </div>
+    <canvas id="pdf-canvas"></canvas>
+    <br><br>
+    <input type="range" min="100" max="500" step="20" id="speed">
+    <h2 id="words">Words will appear here</h2>
+    <button id="show">Show words!</button>
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const urlInput = document.getElementById('url');
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+        const pageInfo = document.getElementById('page-info');
+        const prevPageBtn = document.getElementById('prev-page');
+        const nextPageBtn = document.getElementById('next-page');
+        const show = document.getElementById('show');
+        const words = document.getElementById('words');
+        const speed = document.getElementById('speed');
+        let num = document.getElementById('page_num');
+        let pdfDoc = null;
+        let currentPage = 1;
+        const scale = 1.5;
+
+        num.addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                const pageNumber = Number(num.value);
+                if (Number.isNaN(pageNumber) || pageNumber < 1 || pageNumber > pdfDoc.numPages) {
+                    alert('Please enter a valid page number!');
+                } else {
+                    currentPage = pageNumber;
+                    renderPage(currentPage);
+                }
+            }
+        });
+
+        urlInput.addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                const url = urlInput.value.trim();
+                if (url) {
+                    fetch(url)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.arrayBuffer();
+                        })
+                        .then(data => {
+                            const typedArray = new Uint8Array(data);
+                            pdfjsLib.getDocument(typedArray).promise.then(function (pdf) {
+                                pdfDoc = pdf;
+                                currentPage = 1; // Reset to first page
+                                renderPage(currentPage);
+                            });
+                        })
+                        .catch(error => {
+                            alert('Failed to load PDF. Please check the URL or try again later.');
+                        });
+                }
+            }
+        });
+
+        fileInput.addEventListener('change', function (event) {
+            const file = event.target.files[0];
+
+            if (file.type === 'application/pdf') {
+                const fileReader = new FileReader();
+
+                fileReader.onload = function () {
+                    const typedArray = new Uint8Array(this.result);
+
+                    pdfjsLib.getDocument(typedArray).promise.then(function (pdf) {
+                        pdfDoc = pdf;
+                        renderPage(currentPage);
+                    });
+                };
+
+                fileReader.readAsArrayBuffer(file);
+            } else {
+                alert('Please select a valid PDF file.');
+            }
+        });
+
+        function renderPage(pageNumber) {
+            pdfDoc.getPage(pageNumber).then(function (page) {
+                const viewport = page.getViewport({ scale: scale });
+
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+
+                page.render(renderContext).promise.then(function () {
+                    pageInfo.textContent = `Page: ${pageNumber}`;
+                });
+
+                page.getTextContent().then((textContent) => {
+                    let textItems = textContent.items;
+                    let finalText = '';
+
+                    for (let item of textItems) {
+                        finalText += item.str + ' ';
+                    }
+
+                    localStorage.setItem("pdf-text", finalText.trim());
+                });
+            });
+        }
+
+        prevPageBtn.addEventListener('click', function () {
+            if (pdfDoc && currentPage > 1) {
+                currentPage--;
+                num.value = currentPage.toString();
+                renderPage(currentPage);
+            }
+        });
+
+        nextPageBtn.addEventListener('click', function () {
+            if (pdfDoc && currentPage < pdfDoc.numPages) {
+                currentPage++;
+                num.value = currentPage.toString();
+                renderPage(currentPage);
+            }
+        });
+
+        show.addEventListener('click', function () {
+            const text = localStorage.getItem('pdf-text');
+            if (text === null) {
+                return;
+            }
+
+            const wordsArray = text.split(' ').filter(elem => elem.length > 0);
+            let wordIndex = 0;
+            const wordsPerMinute = Number(speed.value || 200);
+            const interval = 60000 / wordsPerMinute; // Interval in milliseconds
+
+            function displayWord() {
+                if (wordIndex < wordsArray.length) {
+                    words.innerHTML = wordsArray[wordIndex];
+                    wordIndex++;
+                    setTimeout(displayWord, interval);
+                }
+            }
+
+            displayWord();
+        });
+    </script>
+</body>
+
+</html>
