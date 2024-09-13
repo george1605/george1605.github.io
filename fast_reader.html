@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF.js with Navigation Arrows</title>
+    <title>PDF Fast Reading</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <style>
         body {
@@ -328,6 +328,7 @@
                     }
 
                     wordsArray = finalText.trim().split(' ');
+                    
                     localStorage.setItem("pdf-text", finalText.trim());
                     currentWordIndex = 0;
                 });
@@ -365,6 +366,11 @@
                 const selectedColor = colorPicker.value;
 
                 function displayWord() {
+                    if(wordsArray[currentWordIndex].trim() == '')
+                    { 
+                        currentWordIndex++; // skip the word
+                        return;
+                    }
                     if (currentWordIndex < wordsArray.length) {
                         words.style.color = selectedColor;
                         words.innerHTML = wordsArray[currentWordIndex];
